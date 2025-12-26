@@ -26,7 +26,7 @@ SET time_zone = "+00:00";
 --
 -- Table structure for table `events`
 --
-
+CREATE DATABASE event_platform;
 CREATE TABLE `events` (
   `id` int(11) NOT NULL,
   `organizer_id` int(11) NOT NULL,
