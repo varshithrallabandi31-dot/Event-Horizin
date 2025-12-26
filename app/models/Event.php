@@ -1,0 +1,135 @@
+<?php
+require_once __DIR__ . '/../../config/database.php';
+
+class Event {
+    private $conn;
+    private $table_name = "events";
+
+    public function __construct() {
+        $database = new Database();
+        $this->conn = $database->getConnection();
+    }
+
+    public function getAll($limit = 10) {
+        if (!$this->conn) return [];
+        $query = "SELECT e.*, u.name as organizer_name 
+                  FROM " . $this->table_name . " e
+                  LEFT JOIN users u ON e.organizer_id = u.id
+                  ORDER BY e.created_at DESC
+                  LIMIT :limit";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    // Create Event
+    public function create($data) {
+        if (!$this->conn) return false;
+        $query = "INSERT INTO " . $this->table_name . "
+                  SET organizer_id=:organizer_id, title=:title, description=:description,
+                      start_time=:start_time, location_name=:location_name, 
+                      latitude=:latitude, longitude=:longitude, category=:category, image_url=:image_url, created_at=NOW()";
+                      
+        $stmt = $this->conn->prepare($query);
+        
+        // Bind parameters (simplified for brevity)
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(':'.$key, $value);
+        }
+        
+        if ($stmt->execute()) {
+             return $this->conn->lastInsertId();
+        }
+        return false;
+    }
+    
+    public function getById($id) {
+        if (!$this->conn) return false;
+         $query = "SELECT e.*, u.name as organizer_name 
+                  FROM " . $this->table_name . " e
+                  LEFT JOIN users u ON e.organizer_id = u.id
+                  WHERE e.id = ? 
+                  LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $id);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getHostedEvents($userId) {
+        if (!$this->conn) return [];
+        $query = "SELECT events.*, (SELECT COUNT(*) FROM rsvps WHERE rsvps.event_id = events.id) as rsvp_count 
+                  FROM events 
+                  WHERE organizer_id = ? 
+                  ORDER BY created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getParticipatedEvents($userId) {
+        if (!$this->conn) return [];
+        $query = "SELECT e.*, r.status as rsvp_status
+                  FROM events e
+                  JOIN rsvps r ON e.id = r.event_id
+                  WHERE r.user_id = ? AND r.status = 'approved'
+                  ORDER BY e.start_time ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Ticket Tiers
+    public function getTicketTiers($eventId) {
+        if (!$this->conn) return [];
+        $query = "SELECT * FROM ticket_tiers WHERE event_id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Memories
+    public function getMemories($eventId) {
+        if (!$this->conn) return [];
+        $query = "SELECT m.*, u.name as user_name, u.avatar_url 
+                  FROM event_memories m 
+                  LEFT JOIN users u ON m.user_id = u.id 
+                  WHERE m.event_id = ? 
+                  ORDER BY m.created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function addMemory($eventId, $userId, $imageUrl, $caption) {
+        if (!$this->conn) return false;
+        $query = "INSERT INTO event_memories (event_id, user_id, image_url, caption, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $stmt = $this->conn->prepare($query);
+        return $stmt->execute([$eventId, $userId, $imageUrl, $caption]);
+    }
+
+    // Chat Messages
+    public function getMessages($eventId) {
+         if (!$this->conn) return [];
+         $query = "SELECT m.*, u.name as user_name 
+                   FROM messages m 
+                   JOIN users u ON m.user_id = u.id 
+                   WHERE m.event_id = ? 
+                   ORDER BY m.created_at ASC";
+         $stmt = $this->conn->prepare($query);
+         $stmt->execute([$eventId]);
+         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // FAQs
+    public function getFaqs($eventId) {
+        if (!$this->conn) return [];
+        $query = "SELECT * FROM faqs WHERE event_id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}

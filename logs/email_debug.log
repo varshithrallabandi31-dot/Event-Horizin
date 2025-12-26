@@ -1,0 +1,46 @@
+[2025-12-23 07:26:15] mail() simple call to varshivarshith4@gmail.com - Result: FALSE
+[2025-12-23 07:26:17] mail() simple call to varshithrallabandi31@gmail.com - Result: FALSE
+[2025-12-23 07:26:19] mail() simple call to varshivarshith77@gmail.com - Result: FALSE
+[2025-12-23 07:27:02] mail() simple call to varshivarshith4@gmail.com - Result: FALSE
+[2025-12-23 07:27:04] mail() simple call to varshithrallabandi31@gmail.com - Result: FALSE
+[2025-12-23 07:27:06] mail() simple call to varshivarshith77@gmail.com - Result: FALSE
+[2025-12-23 07:29:44] mail() simple call to varshivarshith4@gmail.com - Result: FALSE
+[2025-12-23 07:29:45] mail() simple call to varshithrallabandi31@gmail.com - Result: FALSE
+[2025-12-23 07:29:46] mail() simple call to varshivarshith77@gmail.com - Result: FALSE
+[2025-12-23 07:34:02] mail() call to ouraganisreeja@gmail.com - Result: FALSE - Error: mail(): SMTP server response: 530-5.7.0 Must issue a STARTTLS command first. For more information, go to
+530-5.7.0  https://support.google.com/a/answer/3221692 and review RFC 3207
+530 5.7.0 specifications. d2e1a72fcca58-7ff77abe95dsm12496350b3a.0 - gsmtp
+[2025-12-23 07:34:02] Approval Email to ouraganisreeja@gmail.com - Status: FAILED
+[2025-12-23 07:40:03] mail() simple call to ouraganisreeja@gmail.com - Result: FALSE - Error: mail(): SMTP server response: 530-5.7.0 Must issue a STARTTLS command first. For more information, go to
+530-5.7.0  https://support.google.com/a/answer/3221692 and review RFC 3207
+530 5.7.0 specifications. d9443c01a7336-2a2f3d76ce3sm117872815ad.90 - gsmtp
+[2025-12-23 07:40:04] mail() simple call to varshivarshith4@gmail.com - Result: FALSE - Error: mail(): SMTP server response: 530-5.7.0 Must issue a STARTTLS command first. For more information, go to
+530-5.7.0  https://support.google.com/a/answer/3221692 and review RFC 3207
+530 5.7.0 specifications. d2e1a72fcca58-7ff7e797aadsm12545507b3a.61 - gsmtp
+[2025-12-23 07:40:05] mail() simple call to varshithrallabandi31@gmail.com - Result: FALSE - Error: mail(): SMTP server response: 530-5.7.0 Must issue a STARTTLS command first. For more information, go to
+530-5.7.0  https://support.google.com/a/answer/3221692 and review RFC 3207
+530 5.7.0 specifications. d2e1a72fcca58-7ff7a93b516sm12563403b3a.6 - gsmtp
+[2025-12-23 07:40:06] mail() simple call to varshivarshith77@gmail.com - Result: FALSE - Error: mail(): SMTP server response: 530-5.7.0 Must issue a STARTTLS command first. For more information, go to
+530-5.7.0  https://support.google.com/a/answer/3221692 and review RFC 3207
+530 5.7.0 specifications. 41be03b00d2f7-c1e7961fbb9sm10725034a12.2 - gsmtp
+[2025-12-23 07:49:03] mail() simple call to ouraganisreeja@gmail.com - Result: TRUE
+[2025-12-23 07:49:08] mail() simple call to varshivarshith4@gmail.com - Result: TRUE
+[2025-12-23 07:49:13] mail() simple call to varshithrallabandi31@gmail.com - Result: TRUE
+[2025-12-23 07:49:18] mail() simple call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 07:50:57] mail() call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 07:50:57] Approval Email to varshivarshith77@gmail.com - Status: SUCCESS
+[2025-12-23 08:24:26] mail() call to varshithrallabandi31@gmail.com - Result: TRUE
+[2025-12-23 08:24:26] Approval Email to varshithrallabandi31@gmail.com - Status: SUCCESS
+[2025-12-23 08:32:57] mail() call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 08:32:57] Approval Email to varshivarshith77@gmail.com - Status: SUCCESS
+[2025-12-23 08:44:10] mail() call to kusumanjali4646@gmail.com - Result: TRUE
+[2025-12-23 08:44:10] Approval Email to kusumanjali4646@gmail.com - Status: SUCCESS
+[2025-12-23 08:45:13] mail() simple call to kusumanjali4646@gmail.com - Result: TRUE
+[2025-12-23 08:45:18] mail() simple call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 08:45:23] mail() simple call to varshithrallabandi31@gmail.com - Result: TRUE
+[2025-12-23 08:45:28] mail() simple call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 08:45:34] mail() simple call to ouraganisreeja@gmail.com - Result: TRUE
+[2025-12-23 08:45:39] mail() simple call to varshivarshith4@gmail.com - Result: TRUE
+[2025-12-23 08:45:44] mail() simple call to varshithrallabandi31@gmail.com - Result: TRUE
+[2025-12-23 08:45:49] mail() simple call to varshivarshith77@gmail.com - Result: TRUE
+[2025-12-23 14:45:50] mail() simple call to ouraganisreeja@gmail.com - Result: TRUE
