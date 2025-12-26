@@ -675,12 +675,30 @@ function eventPage() {
         requiresApproval: <?php echo ($event['requires_approval'] ?? 1) == 1 ? 'true' : 'false'; ?>,
         polls: [],
         newPoll: { question: '', options: ['', ''] },
+        eventId: <?= $event['id'] ?>,
+        chatInterval: null,
         
         init() {
-            // Initial Mock Messages
-            this.fetchMessages();
-            // Start Polling
-            setInterval(() => this.fetchMessages(), 5000);
+            this.fetchPolls();
+            
+            // Watch tab changes to load messages when switching to chat
+            this.$watch('communityTab', value => {
+                if (value === 'chat') {
+                    this.fetchMessages();
+                }
+            });
+
+            this.$watch('activeTab', value => {
+                if (value === 'community') {
+                    this.fetchMessages();
+                }
+            });
+            
+            // Initial check - load messages if already on community tab
+            if (this.activeTab === 'community') {
+                this.fetchMessages();
+            }
+
             lucide.createIcons();
         },
 
@@ -788,6 +806,64 @@ function eventPage() {
             });
         },
 
+        fetchMessages() {
+            if(this.activeTab !== 'community') return;
+            
+            fetch('<?= BASE_URL ?>event/' + this.eventId + '/chat')
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        this.messages = data.messages;
+                        // Scroll to bottom if new messages? 
+                        this.$nextTick(() => {
+                            const container = document.getElementById('chat-container');
+                            if(container && (container.scrollTop + container.clientHeight >= container.scrollHeight - 50)) { 
+                                // Only scroll if user was already near bottom
+                                container.scrollTop = container.scrollHeight;
+                            } else if (container && this.messages.length > 0 && container.scrollTop === 0) {
+                                // Initial load
+                                container.scrollTop = container.scrollHeight;
+                            }
+                        });
+                    }
+                })
+                .catch(e => console.error(e));
+        },
+        
+        startChatPolling() {
+             if (this.chatInterval) clearInterval(this.chatInterval);
+             this.fetchMessages(); // Initial fetch
+             this.chatInterval = setInterval(() => {
+                 this.fetchMessages();
+             }, 3000);
+        },
+
+        sendMessage() {
+            if(!this.newMessage.trim()) return;
+            
+            let fd = new FormData();
+            fd.append('message', this.newMessage);
+            
+            fetch('<?= BASE_URL ?>event/' + this.eventId + '/send-message', {
+                method: 'POST',
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'success') {
+                     this.messages.push(data.message); // Optimistic update / server confirmation
+                     this.newMessage = '';
+                     this.$nextTick(() => {
+                         const container = document.getElementById('chat-container');
+                         if(container) container.scrollTop = container.scrollHeight;
+                     });
+                } else {
+                    alert(data.message || 'Failed to send');
+                }
+            })
+            .catch(e => console.error(e));
+        },
+
         fetchPolls() {
             fetch(`<?php echo BASE_URL; ?>event/<?php echo $event['id']; ?>/polls`)
                 .then(res => res.json())
@@ -799,6 +875,7 @@ function eventPage() {
         },
 
         createPoll() {
+            // ... (keep existing poll logic if needed, or if I'm replacing it, include it)
             console.log('Creating poll...', this.newPoll);
             if (!this.newPoll.question || this.newPoll.options.filter(o => o.trim()).length < 2) {
                 alert('Please enter a question and at least 2 options.');
@@ -815,7 +892,6 @@ function eventPage() {
             })
             .then(res => res.json())
             .then(data => {
-                console.log('Poll creation response:', data);
                 if (data.status === 'success') {
                     this.newPoll = { question: '', options: ['', ''] };
                     this.fetchPolls();
@@ -823,10 +899,6 @@ function eventPage() {
                 } else {
                     alert(data.message || 'Failed to create poll');
                 }
-            })
-            .catch(err => {
-                console.error('Poll creation error:', err);
-                alert('Error creating poll. Check console.');
             });
         },
 
@@ -847,6 +919,53 @@ function eventPage() {
                      alert(data.message || 'You have already voted or an error occurred.');
                  }
              });
+        },
+
+        // --- Chat Methods ---
+        fetchMessages() {
+            // Always fetch messages when this function is called
+            fetch('<?= BASE_URL ?>event/' + this.eventId + '/chat')
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        this.messages = data.messages;
+                        this.$nextTick(() => {
+                            // Container ID matches the HTML ID
+                            const container = document.getElementById('chat-window');
+                            if(container) {
+                                // Auto scroll to bottom
+                                container.scrollTop = container.scrollHeight;
+                            }
+                        });
+                    }
+                })
+                .catch(e => console.error(e));
+        },
+
+        sendMessage() {
+            if(!this.newMessage.trim()) return;
+            
+            let fd = new FormData();
+            fd.append('message', this.newMessage);
+            
+            fetch('<?= BASE_URL ?>event/' + this.eventId + '/send-message', {
+                method: 'POST',
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'success') {
+                     this.newMessage = '';
+                     // Fetch all messages to refresh the list
+                     this.fetchMessages();
+                } else {
+                    alert(data.message || 'Failed to send message');
+                }
+            })
+            .catch(e => {
+                console.error(e);
+                alert('Connection error');
+            });
         }
     }
 }

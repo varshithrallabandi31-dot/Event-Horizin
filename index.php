@@ -228,6 +228,16 @@ if ($path === '/' || $path === '/home') {
     $controller = new EventController();
     $controller->createPoll($matches[1]);
 
+} elseif (preg_match('#^/event/(\d+)/chat$#', $path, $matches)) {
+    require_once __DIR__ . '/app/controllers/EventController.php';
+    $controller = new EventController();
+    $controller->chat($matches[1]);
+
+} elseif (preg_match('#^/event/(\d+)/send-message$#', $path, $matches)) {
+    require_once __DIR__ . '/app/controllers/EventController.php';
+    $controller = new EventController();
+    $controller->sendMessage($matches[1]);
+
 } elseif (preg_match('#^/event/(\d+)/vote-poll$#', $path, $matches)) {
     require_once __DIR__ . '/app/controllers/EventController.php';
     $controller = new EventController();

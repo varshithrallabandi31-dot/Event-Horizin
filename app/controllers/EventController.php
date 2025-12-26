@@ -80,6 +80,25 @@ class EventController {
         $eventId = $eventModel->create($data, $tiers);
 
         if ($eventId) {
+            // Auto-Generate Standard FAQs
+            $faqs = [
+                ['question' => 'Is parking available?', 'answer' => 'Yes, we have a dedicated lot.'],
+                ['question' => 'Is there a dress code?', 'answer' => 'Smart casual is recommended.'],
+                ['question' => 'Can I bring a plus one?', 'answer' => 'Please check the ticket details.'],
+                ['question' => 'Is food provided?', 'answer' => 'Yes, generic snacks will be available.'],
+                ['question' => 'Is there wheelchair access?', 'answer' => 'Yes, the venue is fully accessible.'],
+                ['question' => 'What is the refund policy?', 'answer' => 'Refunds are available up to 24 hours before.'],
+                ['question' => 'Are pets allowed?', 'answer' => 'Service animals only.']
+            ];
+
+            $db = new Database();
+            $conn = $db->getConnection();
+            $faqStmt = $conn->prepare("INSERT INTO faqs (event_id, question, answer, created_at) VALUES (?, ?, ?, NOW())");
+            
+            foreach ($faqs as $faq) {
+                $faqStmt->execute([$eventId, $faq['question'], $faq['answer']]);
+            }
+
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'id' => $eventId, 'redirect' => BASE_URL . 'event/' . $eventId]);
         } else {
@@ -89,25 +108,6 @@ class EventController {
         exit;
     }
     
-    public function chat($eventId) {
-        $eventModel = new Event();
-        $messagesRaw = $eventModel->getMessages($eventId);
-        
-        $messages = array_map(function($msg) {
-            return [
-                'user' => $msg['user_name'],
-                'content' => htmlspecialchars($msg['content']),
-                'time' => date('h:i A', strtotime($msg['created_at']))
-            ];
-        }, $messagesRaw);
-
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'success',
-            'messages' => $messages
-        ]);
-        exit;
-    }
 
     public function ticket($eventId) {
         $eventModel = new Event();
@@ -363,6 +363,48 @@ class EventController {
          exit;
     }
 
+    public function chat($eventId) {
+        if (!isset($_SESSION['user_id'])) {
+             // Ensure clean output
+             if (ob_get_length()) ob_clean();
+             header('Content-Type: application/json');
+             echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+             exit;
+        }
+
+        $db = new Database();
+        $conn = $db->getConnection();
+        
+        // Fetch messages with User info
+        $stmt = $conn->prepare("
+            SELECT m.*, u.name as user_name, m.created_at 
+            FROM messages m 
+            JOIN users u ON m.user_id = u.id 
+            WHERE m.event_id = ? 
+            ORDER BY m.created_at ASC
+        ");
+        $stmt->execute([$eventId]);
+        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $formatted = [];
+        foreach($messages as $msg) {
+            $formatted[] = [
+                'user' => $msg['user_name'],
+                // Decode potentially double-encoded chars or just simple escaping
+                'content' => htmlspecialchars($msg['content']), 
+                'time' => date('h:i A', strtotime($msg['created_at'])),
+                'is_me' => ($msg['user_id'] == $_SESSION['user_id'])
+            ];
+        }
+
+        // Ensure clean output before JSON
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+        
+        echo json_encode(['status' => 'success', 'messages' => $formatted]);
+        exit;
+    }
+
     public function sendMessage($eventId) {
         if (!isset($_SESSION['user_id'])) {
              echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
@@ -390,7 +432,8 @@ class EventController {
                  'message' => [
                      'user' => $user['name'],
                      'content' => htmlspecialchars($message),
-                     'time' => date('h:i A')
+                     'time' => date('h:i A'),
+                     'is_me' => true
                  ]
              ]);
         } else {
