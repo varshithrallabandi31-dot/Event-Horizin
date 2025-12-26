@@ -89,5 +89,22 @@ class EmailTemplates {
         
         return self::wrap($subject, $content);
     }
+    public static function rsvpConfirmation($userName, $eventName, $eventLink, $kitDownloadLink) {
+        $content = "
+            <p class='label'>Registration Confirmed</p>
+            <h2 style='margin-top: 5px; color: #111;'>You're In!</h2>
+            <p>Hi <strong>$userName</strong>,</p>
+            <p>Your spot for <strong>$eventName</strong> has been confirmed. We can't wait to see you there!</p>
+            
+            <div style='background: #fdfbf7; padding: 20px; border-left: 4px solid #C19A6B; margin: 20px 0;'>
+                <h3 style='margin: 0 0 10px 0; color: #111;'>Your Digital Kit</h3>
+                <p style='margin: 0;'>We've attached your exclusive <strong>Digital Event Kit</strong> to this email. It contains your entry pass, guide, and more.</p>
+            </div>
+            
+            <p>You can also download it anytime from the event page.</p>
+        ";
+        
+        return self::wrap("Confirmed: $eventName", $content, "View Event Details", $eventLink);
+    }
 }
 ?>

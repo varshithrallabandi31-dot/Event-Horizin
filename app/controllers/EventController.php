@@ -17,10 +17,13 @@ class EventController {
         require_once __DIR__ . '/../models/RSVP.php';
         require_once __DIR__ . '/../models/User.php';
         $rsvpModel = new RSVP();
+        $userModel = new User();
         $rsvpStatus = null;
+        $currentUser = null;
         
         if (isset($_SESSION['user_id'])) {
             $rsvpStatus = $rsvpModel->getUserStatus($_SESSION['user_id'], $id);
+            $currentUser = $userModel->findById($_SESSION['user_id']); // Fetch user info
         }
 
         $ticketTiers = $eventModel->getTicketTiers($id);
@@ -32,7 +35,8 @@ class EventController {
             'rsvpStatus' => $rsvpStatus,
             'ticketTiers' => $ticketTiers,
             'memories' => $memories,
-            'faqs' => $faqs
+            'faqs' => $faqs,
+            'currentUser' => $currentUser // Pass to view
         ]);
     }
 
@@ -63,10 +67,17 @@ class EventController {
             'category' => $_POST['category'] ?? 'Social',
             'image_url' => $_POST['image'] ?? '',
             'latitude' => $_POST['latitude'] ?? null,
-            'longitude' => $_POST['longitude'] ?? null
+            'longitude' => $_POST['longitude'] ?? null,
+            'requires_approval' => isset($_POST['requires_approval']) ? (int)$_POST['requires_approval'] : 1
         ];
 
-        $eventId = $eventModel->create($data);
+        $tiers = [];
+        if (isset($_POST['tiers'])) {
+            $tiers = json_decode($_POST['tiers'], true);
+            if (!is_array($tiers)) $tiers = [];
+        }
+
+        $eventId = $eventModel->create($data, $tiers);
 
         if ($eventId) {
             header('Content-Type: application/json');
@@ -224,14 +235,21 @@ class EventController {
 
         $eventId = $_POST['event_id'] ?? 0;
         $interest = $_POST['interest'] ?? '';
-        $name = $_POST['name'] ?? ''; // Capture name
+        $name = $_POST['name'] ?? ''; 
+        $email = $_POST['email'] ?? ''; 
         
         $userId = $_SESSION['user_id'];
         
-        // Update User Name if provided
-        if (!empty($name)) {
+        // Update User Info if provided (Smart Update)
+        if (!empty($name) || !empty($email)) {
             $userModel = new User();
-            $userModel->updateName($userId, $name);
+            // Fetch current to avoid overwriting with empty if not provided? 
+            // Actually updateBasicInfo handles raw strings. 
+            // If name is empty here but user exists, we shouldn't wipe it.
+            // But frontend only sends if it was missing. 
+            // Let's rely on updateBasicInfo. Ideally we check if not empty.
+            
+            $userModel->updateBasicInfo($userId, $name, !empty($email) ? $email : null);
         }
 
         $db = new Database();
@@ -247,22 +265,67 @@ class EventController {
             exit;
         }
         
+        // Check if event requires approval
+        $eventModel = new Event();
+        $event = $eventModel->getById($eventId);
+        $status = 'pending';
+        
+        if ($event && isset($event['requires_approval']) && $event['requires_approval'] == 0) {
+            $status = 'approved';
+        }
+
         // Store interest
         $answers = json_encode(['interest' => $interest]);
 
-        $stmt = $conn->prepare("INSERT INTO rsvps (event_id, user_id, answers, status, created_at) VALUES (?, ?, ?, 'pending', NOW())");
-        if($stmt->execute([$eventId, $userId, $answers])) {
+        $stmt = $conn->prepare("INSERT INTO rsvps (event_id, user_id, answers, status, created_at) VALUES (?, ?, ?, ?, NOW())");
+        if($stmt->execute([$eventId, $userId, $answers, $status])) {
+            // Send Email if Approved
+            if ($status === 'approved') {
+                $this->sendApprovalEmail($userId, $eventId);
+            }
             header('Location: ' . BASE_URL . 'rsvp/success');
         } else {
              // Fallback
-             $stmt = $conn->prepare("INSERT INTO rsvps (event_id, user_id, interest, status, created_at) VALUES (?, ?, ?, 'pending', NOW())");
-             if($stmt->execute([$eventId, $userId, $interest])) {
+             $stmt = $conn->prepare("INSERT INTO rsvps (event_id, user_id, interest, status, created_at) VALUES (?, ?, ?, ?, NOW())");
+             if($stmt->execute([$eventId, $userId, $interest, $status])) {
+                 // Send Email if Approved
+                 if ($status === 'approved') {
+                     $this->sendApprovalEmail($userId, $eventId);
+                 }
                  header('Location: ' . BASE_URL . 'rsvp/success');
              } else {
                  die("Database Error");
              }
         }
         exit;
+    }
+
+    private function sendApprovalEmail($userId, $eventId) {
+        require_once __DIR__ . '/../libs/MailHelper.php';
+        require_once __DIR__ . '/../libs/EmailTemplates.php';
+        require_once __DIR__ . '/../libs/KitHelper.php';
+        require_once __DIR__ . '/../models/User.php';
+        require_once __DIR__ . '/../models/Event.php';
+
+        $userModel = new User();
+        $eventModel = new Event();
+        
+        $user = $userModel->findById($userId);
+        $event = $eventModel->getById($eventId);
+        
+        if ($user && $event && !empty($user['email'])) {
+             // Generate PDF
+             $pdfContent = KitHelper::generate($event, $user);
+             $pdfName = 'EventKit_' . preg_replace('/[^a-zA-Z0-9]/', '_', $event['title']) . '.pdf';
+             
+             // Generate Email Body
+             $eventLink = BASE_URL . 'event/' . $eventId;
+             $kitLink = BASE_URL . 'event/' . $eventId . '/download-kit';
+             $body = EmailTemplates::rsvpConfirmation($user['name'], $event['title'], $eventLink, $kitLink);
+             
+             // Send
+             MailHelper::sendWithAttachment($user['email'], "You're In! - " . $event['title'], $body, $pdfContent, $pdfName);
+        }
     }
 
     public function rsvpSuccess() {

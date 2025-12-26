@@ -26,24 +26,48 @@ class Event {
     }
     
     // Create Event
-    public function create($data) {
+    public function create($data, $tiers = []) {
         if (!$this->conn) return false;
-        $query = "INSERT INTO " . $this->table_name . "
-                  SET organizer_id=:organizer_id, title=:title, description=:description,
-                      start_time=:start_time, location_name=:location_name, 
-                      latitude=:latitude, longitude=:longitude, category=:category, image_url=:image_url, created_at=NOW()";
-                      
-        $stmt = $this->conn->prepare($query);
         
-        // Bind parameters (simplified for brevity)
-        foreach ($data as $key => $value) {
-            $stmt->bindValue(':'.$key, $value);
+        try {
+            $this->conn->beginTransaction();
+
+            $query = "INSERT INTO " . $this->table_name . "
+                      SET organizer_id=:organizer_id, title=:title, description=:description,
+                          start_time=:start_time, location_name=:location_name, 
+                          latitude=:latitude, longitude=:longitude, category=:category, 
+                          image_url=:image_url, requires_approval=:requires_approval, created_at=NOW()";
+                          
+            $stmt = $this->conn->prepare($query);
+            
+            // Bind parameters
+            foreach ($data as $key => $value) {
+                $stmt->bindValue(':'.$key, $value);
+            }
+            
+            if (!$stmt->execute()) {
+                 $this->conn->rollBack();
+                 return false;
+            }
+            
+            $eventId = $this->conn->lastInsertId();
+
+            // Insert Ticket Tiers
+            if (!empty($tiers)) {
+                $tierQuery = "INSERT INTO ticket_tiers (event_id, name, price) VALUES (?, ?, ?)";
+                $tierStmt = $this->conn->prepare($tierQuery);
+                foreach ($tiers as $tier) {
+                    $tierStmt->execute([$eventId, $tier['name'], $tier['price']]);
+                }
+            }
+
+            $this->conn->commit();
+            return $eventId;
+
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return false;
         }
-        
-        if ($stmt->execute()) {
-             return $this->conn->lastInsertId();
-        }
-        return false;
     }
     
     public function getById($id) {

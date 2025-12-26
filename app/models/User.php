@@ -104,17 +104,26 @@ class User {
         return $stmt->execute();
     }
 
-    // Update name only
-    public function updateName($id, $name) {
+    // Update name and email
+    public function updateBasicInfo($id, $name, $email = null) {
         if (!$this->conn) return false;
-        $query = "UPDATE " . $this->table_name . " SET name = :name WHERE id = :id";
+        
+        $query = "UPDATE " . $this->table_name . " SET name = :name";
+        if ($email) {
+            $query .= ", email = :email";
+        }
+        $query .= " WHERE id = :id";
         
         $stmt = $this->conn->prepare($query);
         
         $name = htmlspecialchars(strip_tags($name));
-        
         $stmt->bindParam(':name', $name);
         $stmt->bindParam(':id', $id);
+        
+        if ($email) {
+            $email = htmlspecialchars(strip_tags($email));
+            $stmt->bindParam(':email', $email);
+        }
 
         return $stmt->execute();
     }

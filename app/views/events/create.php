@@ -201,6 +201,11 @@ function createEventWizard() {
             formData.append('latitude', this.formData.lat);
             formData.append('longitude', this.formData.lng);
             formData.append('description', 'Join us for ' + this.formData.title + '! A ' + this.formData.category + ' event.');
+            
+            // Append Tiers as JSON string
+            formData.append('tiers', JSON.stringify(this.formData.tiers));
+            // Append Approval Setting (1 or 0)
+            formData.append('requires_approval', this.formData.approval ? 1 : 0);
 
             fetch('<?php echo BASE_URL; ?>events/create', {
                 method: 'POST',

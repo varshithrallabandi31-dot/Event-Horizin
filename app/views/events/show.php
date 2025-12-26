@@ -505,12 +505,27 @@ $eventSchedule = $schedules[$eventType] ?? $schedules['social'];
 
                 <!-- RSVP Form/Button -->
                 <div x-show="rsvpStatus === null">
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-charcoal-700 mb-2 uppercase tracking-wider">Your Full Name</label>
-                        <input type="text" x-model="name" class="w-full bg-cream-50 border-2 border-charcoal-200 rounded-xl px-4 py-2 text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 mb-4" placeholder="Enter your full name">
+                    <div class="mb-4 space-y-4">
+                        <!-- Smart Contact Collection -->
+                        <div x-show="!hasName">
+                            <label class="block text-xs font-semibold text-charcoal-700 mb-2 uppercase tracking-wider">Your Full Name</label>
+                            <input type="text" x-model="name" class="w-full bg-cream-50 border-2 border-charcoal-200 rounded-xl px-4 py-2 text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="Enter your full name">
+                        </div>
+                        <div x-show="!hasEmail">
+                            <label class="block text-xs font-semibold text-charcoal-700 mb-2 uppercase tracking-wider">Your Email</label>
+                            <input type="email" x-model="email" class="w-full bg-cream-50 border-2 border-charcoal-200 rounded-xl px-4 py-2 text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="Enter your email">
+                        </div>
                         
-                        <label class="block text-xs font-semibold text-charcoal-700 mb-2 uppercase tracking-wider">Why do you want to join?</label>
-                        <textarea x-model="interest" rows="2" class="w-full bg-cream-50 border-2 border-charcoal-200 rounded-xl px-4 py-2 text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="I love tech and community..."></textarea>
+                        <!-- Logged In As Indicator -->
+                        <div x-show="hasName" class="flex items-center gap-2 text-sm text-charcoal-500 bg-charcoal-50 px-3 py-2 rounded-lg">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                            <span>Joining as <span class="font-bold text-charcoal-900" x-text="name"></span></span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-charcoal-700 mb-2 uppercase tracking-wider">Why do you want to join?</label>
+                            <textarea x-model="interest" rows="2" class="w-full bg-cream-50 border-2 border-charcoal-200 rounded-xl px-4 py-2 text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="I love tech and community..."></textarea>
+                        </div>
                     </div>
                     <button @click="submitRSVP()" 
                         :disabled="isSubmitting"
@@ -519,7 +534,7 @@ $eventSchedule = $schedules[$eventType] ?? $schedules['social'];
                         <span x-show="isSubmitting">Sending...</span>
                     </button>
                     <p class="text-center text-[10px] text-charcoal-500 px-4">
-                        By requesting, you agree to the host's rules. This event requires **manual approval** by the organizer.
+                        By requesting, you agree to the host's rules. This event requires <span x-text="requiresApproval ? '**manual approval**' : '**no approval**'"></span> by the organizer.
                     </p>
                 </div>
 
@@ -653,6 +668,11 @@ function eventPage() {
             name: '',
             email: ''
         },
+        name: '<?php echo $currentUser['name'] ?? ''; ?>', 
+        email: '<?php echo $currentUser['email'] ?? ''; ?>',
+        hasName: <?php echo !empty($currentUser['name']) ? 'true' : 'false'; ?>,
+        hasEmail: <?php echo !empty($currentUser['email']) ? 'true' : 'false'; ?>,
+        requiresApproval: <?php echo ($event['requires_approval'] ?? 1) == 1 ? 'true' : 'false'; ?>,
         polls: [],
         newPoll: { question: '', options: ['', ''] },
         
@@ -664,56 +684,33 @@ function eventPage() {
             lucide.createIcons();
         },
 
-        fetchMessages() {
-            fetch(`<?php echo BASE_URL; ?>event/<?php echo $event['id']; ?>/chat`)
-                .then(res => res.json())
-                .then(data => {
-                    if(data.status === 'success') {
-                        // Update list only if new messages
-                        if(JSON.stringify(this.messages) !== JSON.stringify(data.messages)) {
-                            this.messages = data.messages;
-                            this.$nextTick(() => {
-                                const win = document.getElementById('chat-window');
-                                win.scrollTop = win.scrollHeight;
-                            });
-                        }
-                    }
-                });
-        },
-
-        sendMessage() {
-            if(this.newMessage.trim() === '') return;
-            
-            const formData = new FormData();
-            formData.append('message', this.newMessage);
-
-            fetch(`<?php echo BASE_URL; ?>event/<?php echo $event['id']; ?>/send-message`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    this.newMessage = '';
-                    this.fetchMessages();
-                } else {
-                    alert(data.message || 'Failed to send message');
-                }
-            });
-        },
+        // ... methods ...
 
         async submitRSVP() {
-            if(!this.interest || !this.name) {
-                alert('Please provide your name and tell the host why you want to join.');
+            // Validate: If name/email not set (and we don't have them), alert
+            if(!this.interest) {
+                 alert('Please tell the host why you want to join.');
+                 return;
+            }
+            if (!this.hasName && !this.name) {
+                alert('Please provide your name.');
                 return;
             }
+            if (!this.hasEmail && !this.email) {
+                alert('Please provide your email.');
+                return;
+            }
+
             this.isSubmitting = true;
             
             try {
                 const formData = new FormData();
                 formData.append('event_id', <?php echo $event['id']; ?>);
                 formData.append('interest', this.interest);
-                formData.append('name', this.name);
+                
+                // Only send if we needed to collect it
+                if (!this.hasName) formData.append('name', this.name);
+                if (!this.hasEmail) formData.append('email', this.email);
                 
                 const response = await fetch('<?php echo BASE_URL; ?>rsvp/submit', {
                     method: 'POST',
