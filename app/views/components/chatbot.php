@@ -18,7 +18,7 @@
     </button>
     
     <!-- Chat Panel -->
-    <div x-show="isOpen" 
+    <div x-show="isOpen" x-cloak
          x-transition:enter="transition ease-out duration-300 transform"
          x-transition:enter-start="translate-y-8 opacity-0 scale-95"
          x-transition:enter-end="translate-y-0 opacity-100 scale-100"
@@ -150,6 +150,8 @@
 </div>
 
 <style>
+[x-cloak] { display: none !important; }
+
 @keyframes fade-in {
     from {
         opacity: 0;
